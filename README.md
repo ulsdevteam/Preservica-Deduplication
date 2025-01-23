@@ -36,7 +36,8 @@ using the SourceID and preservica Ref the following pseudocode is implemented:
             EndForeach
             EndForeach
 
-    once the code executes the remaining file - update.csv will be used to run the move_to_trash function or the update_preservica_ref function depending on the key.
+    
+once the code executes the remaining file - update.csv will be used to run the move_to_trash function or the update_preservica_ref function depending on the key.
 
       
 
