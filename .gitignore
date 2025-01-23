@@ -3,4 +3,5 @@
 
 # ignore log files
 *.log
+errors.log
 

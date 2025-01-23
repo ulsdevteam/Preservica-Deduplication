@@ -7,13 +7,13 @@ import logging
 import configparser
 
 
-# config = configparser.ConfigParser()
-# config['Login Credentials'] = {'username': '', 'password': ""}
-# config['base URI'] = {}
-# config['base URI']['URI'] = 'https://pitt.preservica.com/api/accesstoken/login'
+config = configparser.ConfigParser()
+config['Login Credentials'] = {'username': 'uls-systemsdevelopment@pitt.edu', 'password': "#6ej3N7%%f8e1mYZ#"}
+config['base URI'] = {}
+config['base URI']['URI'] = 'https://pitt.preservica.com/api/accesstoken/login'
  
-# with open('config.ini', 'w') as configfile:
-#    config.write(configfile)
+with open('config.ini', 'w') as configfile:
+   config.write(configfile)
 
 # read config file to pull username and password
 config = configparser.ConfigParser()
@@ -22,6 +22,8 @@ config.read('config.ini')
 username = config['Login Credentials']['username']
 password = config['Login Credentials']['password']
 baseURL = config['base URI']['uri']
+
+print(f"username: {username} and password: {password}")
 
 #parent ref arg 1
 # refs to move.refs arg 2
