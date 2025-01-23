@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# #6ej3N7%f8e1mYZ#
-# uls-systemsdevelopment@pitt.edu
+# 
+# 
 
 
 # Where is the ingest monitor message file downloaded from Preservica?

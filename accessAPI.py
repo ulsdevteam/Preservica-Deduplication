@@ -4,7 +4,17 @@ import xml.etree.ElementTree as ET
 import sys
 import csv
 import logging
-import subprocess
+import configparser
+
+
+config = configparser.ConfigParser()
+config['Login Credentials'] = {'username': 'uls-systemsdevelopment@pitt.edu', 'password': '#6ej3N7%f8e1mYZ#'}
+config['base URI'] = {}
+config['base URI']['URI'] = 'https://pitt.preservica.com/api/accesstoken/login'
+ 
+with open(config.ini, 'w') as configfile:
+   config.write(configfile)
+
 
 #parent ref arg 1
 # refs to move.refs arg 2
@@ -222,7 +232,8 @@ def main():
 
 
 if __name__ == "__main__":
-  main()
+#   main()
+    print("running main")
 
 
 # #open file and begin
