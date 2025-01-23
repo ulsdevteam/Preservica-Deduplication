@@ -7,14 +7,21 @@ import logging
 import configparser
 
 
-config = configparser.ConfigParser()
-config['Login Credentials'] = {'username': 'uls-systemsdevelopment@pitt.edu', 'password': '#6ej3N7%f8e1mYZ#'}
-config['base URI'] = {}
-config['base URI']['URI'] = 'https://pitt.preservica.com/api/accesstoken/login'
+# config = configparser.ConfigParser()
+# config['Login Credentials'] = {'username': '', 'password': ""}
+# config['base URI'] = {}
+# config['base URI']['URI'] = 'https://pitt.preservica.com/api/accesstoken/login'
  
-with open(config.ini, 'w') as configfile:
-   config.write(configfile)
+# with open('config.ini', 'w') as configfile:
+#    config.write(configfile)
 
+# read config file to pull username and password
+config = configparser.ConfigParser()
+config.read('config.ini')
+
+username = config['Login Credentials']['username']
+password = config['Login Credentials']['password']
+baseURL = config['base URI']['uri']
 
 #parent ref arg 1
 # refs to move.refs arg 2
@@ -34,12 +41,13 @@ if len(sys.argv) < 2:
 else: print(f"file to use: {sys.argv[1]}")
 
 
+
 def login():
-    url = "https://pitt.preservica.com/api/accesstoken/login"
+    url = baseURL
 
     data = {
-    "username": "",
-    "password": "",
+    "username": username,
+    "password": password,
     "tenant": "pitt"
     }
 

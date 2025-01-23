@@ -1,9 +1,5 @@
 #!/bin/bash
 
-# 
-# 
-
-
 # Where is the ingest monitor message file downloaded from Preservica?
 MESSAGEFILE=$1
 if [ "$MESSAGEFILE" == "" ]
