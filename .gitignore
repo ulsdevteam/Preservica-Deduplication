@@ -5,3 +5,5 @@
 *.log
 errors.log
 
+# ignore all .csv files
+*.csv
