@@ -43,6 +43,8 @@ if len(sys.argv) < 2:
 else: print(f"file to use: {sys.argv[1]}")
 
 
+fullPID = None
+
 
 def login():
     url = baseURL
@@ -218,11 +220,15 @@ def run_query(sourceID, gameraRef, token):
             #if ref differs then update in gamera
             print(f"checking gamera for {ref}")
             if ( ref == gameraRef ): print(f"{ref} same as {gameraRef}")
-            else: print(f"use drush to update the preservica ref to {ref}")
+            else: 
+                #write to new file to be used in bash script
+                file = open("change-parentRef.csv", "a")
+                file.write(fullPID + "," + ref)
+                print(f"use drush to update the preservica ref to {ref}")
         else:
             # move ref to trash folder
-            # file = open("move-to-trash.csv", "a")
-            # file.write(ref)
+            file = open("trash.csv", "a")
+            file.write(ref)
             print(f"moving {ref} to trash folder")
 
 def main():
@@ -232,9 +238,10 @@ def main():
         access_token = login()
         for line in linereader:
             if line[0].startswith('pitt'): 
+                fullPID = line[0]
                 sourceID = (line[0]).rsplit( ':' , maxsplit=1)[-1]
                 gameraRef = line[1]
-                # print(f"sourceID: {sourceID} and the corresponding ref: {gameraRef}")
+                print(f"sourceID: {sourceID} and the corresponding ref: {gameraRef}")
                 run_query(sourceID, gameraRef, access_token)
     
     # move refs in trashfile
@@ -242,7 +249,7 @@ def main():
 
 
 if __name__ == "__main__":
-#   main()
+    main()
     print("running main")
 
 
