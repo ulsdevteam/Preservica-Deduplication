@@ -169,12 +169,16 @@ def run_query(sourceID, gameraRef, token):
         return
     else: print(f"total hits: {total_hits}")
 
+    # before making the new lists check to see if it's an exact match to the identifiers
+
     object_refs = {}
     #list of refs and top folder refs
     object_ids = [item.split("|")[1] for item in response_json["value"]["objectIds"]]
     metadata = response_json["value"]["metadata"]
 
-    object_refs = dict.fromkeys(object_ids, bool(False))
+    # object_refs = dict.fromkeys(object_ids, bool(False))
+    matched_object_ids =[]
+    
     for ref in object_refs:
         print(f"object ref: {ref} tagged as {object_refs[ref]}")
     # only_ref = (object_ids[0].split("|"))[1]
@@ -187,9 +191,21 @@ def run_query(sourceID, gameraRef, token):
     islandora_ingest_ref = ['54346d6b-e9ec-4cc1-a102-63fb68ac9177']
 
     for i, obj_id in enumerate(object_ids):
+        matched = False
         for data in metadata[i]:
-            if data["name"] == "xip.top_level_so": 
+            if data["name"] == "xip.identifier":
+                onlyPID = (data["value"][0]).split(':')[1]
+                if sourceID == onlyPID:
+                    matched = True
+                    print(f"exact match for {sourceID} and {onlyPID}")
+                    matched_object_ids.append(obj_id)
+                else:
+                    print("not a match")
+                    break
+            if matched and data["name"] == "xip.top_level_so": 
                 top_level_dict[obj_id] = data["value"]
+
+    object_refs = dict.fromkeys(matched_object_ids, bool(False))
 
     for obj_id in top_level_dict: 
         print(f"object id: {obj_id} and the top level so: {top_level_dict[obj_id]}")
@@ -239,13 +255,14 @@ def main():
         for line in linereader:
             if line[0].startswith('pitt'): 
                 fullPID = line[0]
+                print(f"full pid is: {fullPID}")
                 sourceID = (line[0]).rsplit( ':' , maxsplit=1)[-1]
                 gameraRef = line[1]
                 print(f"sourceID: {sourceID} and the corresponding ref: {gameraRef}")
                 run_query(sourceID, gameraRef, access_token)
     
     # move refs in trashfile
-    move_to_trash("move-to-trash.csv" , )
+    move_to_trash("trash.csv" , )
 
 
 if __name__ == "__main__":
