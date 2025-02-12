@@ -5,6 +5,7 @@ import sys
 import csv
 import logging
 import configparser
+logger = logging.getLogger(__name__)
 
 
 # config = configparser.ConfigParser()
@@ -27,14 +28,6 @@ baseURL = config['base URI']['uri']
 
 #parent ref arg 1
 # refs to move.refs arg 2
-
-logging.basicConfig(
-    level=logging.ERROR,
-    handlers=[
-        logging.StreamHandler(sys.stderr),
-        logging.FileHandler('errors.log', mode='a')
-    ]
-)
 
 
 if len(sys.argv) < 2: 
@@ -157,7 +150,7 @@ def run_query(sourceID, gameraRef, token):
     response = requests.post(search_url, headers=headers, params=data)
 
     # Check if the request was successful
-    if response.status_code == 200: print("success")
+    if response.status_code == 200: logger.info("success")
     else: print(f"Error: {response.status_code}, {response.text}")
 
     #parse json
@@ -165,9 +158,9 @@ def run_query(sourceID, gameraRef, token):
     total_hits = int(response_json["value"]["totalHits"])
 
     if total_hits == 0:
-        print("no preservica refs attached to this SourceID")
+        logger.info("no preservica refs attached to this SourceID")
         return
-    else: print(f"total hits: {total_hits}")
+    else: logger.info(f"total hits: {total_hits}")
 
     # before making the new lists check to see if it's an exact match to the identifiers
 
@@ -180,7 +173,7 @@ def run_query(sourceID, gameraRef, token):
     matched_object_ids =[]
     
     for ref in object_refs:
-        print(f"object ref: {ref} tagged as {object_refs[ref]}")
+        logger.info(f"object ref: {ref} tagged as {object_refs[ref]}")
     # only_ref = (object_ids[0].split("|"))[1]
     # print(f"only the ref: {only_ref}")
     # print(metadata)
@@ -197,10 +190,10 @@ def run_query(sourceID, gameraRef, token):
                 onlyPID = (data["value"][0]).split(':')[1]
                 if sourceID == onlyPID:
                     matched = True
-                    print(f"exact match for {sourceID} and {onlyPID}")
+                    logger.info(f"exact match for {sourceID} and {onlyPID}")
                     matched_object_ids.append(obj_id)
                 else:
-                    print("not a match")
+                    logger.info("not a match")
                     break
             if matched and data["name"] == "xip.top_level_so": 
                 top_level_dict[obj_id] = data["value"]
@@ -208,24 +201,24 @@ def run_query(sourceID, gameraRef, token):
     object_refs = dict.fromkeys(matched_object_ids, bool(False))
 
     for obj_id in top_level_dict: 
-        print(f"object id: {obj_id} and the top level so: {top_level_dict[obj_id]}")
-        if (top_level_dict[obj_id] == islandora_ingest_ref): print("top level is islandora ingest")
+        logger.info(f"object id: {obj_id} and the top level so: {top_level_dict[obj_id]}")
+        if (top_level_dict[obj_id] == islandora_ingest_ref): logger.info("top level is islandora ingest")
         else: 
-            print("top level not islandora ingest")
+            logger.info("top level not islandora ingest")
             if flagged == False:
                 # add ref as authoriative
-                print("adding as authoritative")
+                logger.info("adding as authoritative")
                 object_refs[obj_id] = bool(True)
                 authoritative_refs[obj_id] = top_level_dict[obj_id]
                 flagged = True
             else:
                 # raise an error because multiple are authoritative
-                print("multiple flagged as authoritative error")
+                logger.error("multiple flagged as authoritative error")
                 return
         
     #out of the for loop for the multiple refs
     if flagged == False:
-        print(f"last item ref: {object_ids[-1]}")
+        logger.info(f"last item ref: {object_ids[-1]}")
         object_refs[object_ids[-1]] = bool(True)
 
     #for each ref
@@ -234,20 +227,25 @@ def run_query(sourceID, gameraRef, token):
         if object_refs[ref] == True:
             # drush command to pull islandora ref
             #if ref differs then update in gamera
-            print(f"checking gamera for {ref}")
-            if ( ref == gameraRef ): print(f"{ref} same as {gameraRef}")
+            logger.info(f"checking gamera for {ref}")
+            if ( ref == gameraRef ): 
+                logger.info(f"{ref} same as {gameraRef}")
             else: 
                 #write to new file to be used in bash script
                 file = open("change-parentRef.csv", "a")
                 file.write(fullPID + "," + ref)
-                print(f"use drush to update the preservica ref to {ref}")
+                logger.info(f"use drush to update the preservica ref to {ref}")
         else:
             # move ref to trash folder
             file = open("trash.csv", "a")
             file.write(ref)
-            print(f"moving {ref} to trash folder")
+            logger.info(f"moving {ref} to trash folder")
 
 def main():
+
+    logging.basicConfig(filename='report.log', level=logging.INFO)
+    logging.basicConfig(filename='errors.log', format='%(levelname)s: in function %(funcName)s:%(message)s', level=logging.ERROR)
+
     # # pull sourceID and gamera ref
     with open(sys.argv[1], 'r') as csvfile:
         linereader = csv.reader(csvfile)
@@ -255,10 +253,10 @@ def main():
         for line in linereader:
             if line[0].startswith('pitt'): 
                 fullPID = line[0]
-                print(f"full pid is: {fullPID}")
+                logger.info(f"full pid is: {fullPID}")
                 sourceID = (line[0]).rsplit( ':' , maxsplit=1)[-1]
                 gameraRef = line[1]
-                print(f"sourceID: {sourceID} and the corresponding ref: {gameraRef}")
+                logger.info(f"sourceID: {sourceID} and the corresponding ref: {gameraRef}")
                 run_query(sourceID, gameraRef, access_token)
     
     # move refs in trashfile
@@ -267,7 +265,7 @@ def main():
 
 if __name__ == "__main__":
     main()
-    print("running main")
+    logger.info("running main")
 
 
 # #open file and begin
