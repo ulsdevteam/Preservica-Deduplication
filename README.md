@@ -11,29 +11,29 @@ using the SourceID and preservica Ref the following pseudocode is implemented:
 
             Find islandora_PIDs with an RELS-EXT islandora:preservicaRef
             Foreach islandora_PID
-            Search Preservica's sourceID for the islandora_PID value
-            Foreach Preservica RefId
-                If the Preservica RefId has a root folder which is not "IslandoraIngests"
-                            If no RefId is flagged as authoritative
-                                Flag this RefId as authoritative
+                        Search Preservica's sourceID for the islandora_PID value
+                        Foreach Preservica RefId
+                            If the Preservica RefId has a root folder which is not "IslandoraIngests"
+                                        If no RefId is flagged as authoritative
+                                            Flag this RefId as authoritative
+                                        Else
+                                            Raise an error (mulitple are authoritative)
+                                            Move to the next islandora_PID
+                                        EndIf
+                            EndIf
+                        EndForeach
+                        If No RefIf is flagged as authoritative
+                            Flag the last seen RefId as authoritative
+                        EndIf
+                        Foreach Preservica RefId
+                            If the RefId is flagged as authoritative
+                                        If the islandora:preservicaRef differs
+                                            Update the islandora:preservicaRef in the RELS-EXT
+                                        EndIf
                             Else
-                                Raise an error (mulitple are authoritative)
-                                Move to the next islandora_PID
+                                        Mark the Preservica RefId to be moved to the ZZZ_DELETE folder
                             EndIf
-                EndIf
-            EndForeach
-            If No RefIf is flagged as authoritative
-                Flag the last seen RefId as authoritative
-            EndIf
-            Foreach Preservica RefId
-                If the RefId is flagged as authoritative
-                            If the islandora:preservicaRef differs
-                                Update the islandora:preservicaRef in the RELS-EXT
-                            EndIf
-                Else
-                            Mark the Preservica RefId to be moved to the ZZZ_DELETE folder
-                EndIf
-            EndForeach
+                        EndForeach
             EndForeach
 
     
