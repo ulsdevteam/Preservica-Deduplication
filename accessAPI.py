@@ -182,6 +182,7 @@ def run_query(sourceID, gameraRef, token):
     flagged = bool(False)
     authoritative_refs = {}
     islandora_ingest_ref = ['54346d6b-e9ec-4cc1-a102-63fb68ac9177']
+    trash_folder_ref = ['3781eb01-0e98-4b91-a947-65d59be8516f']
 
     for i, obj_id in enumerate(object_ids):
         matched = False
@@ -202,9 +203,9 @@ def run_query(sourceID, gameraRef, token):
 
     for obj_id in top_level_dict: 
         logger.info(f"object id: {obj_id} and the top level so: {top_level_dict[obj_id]}")
-        if (top_level_dict[obj_id] == islandora_ingest_ref): logger.info("top level is islandora ingest")
+        if (top_level_dict[obj_id] == islandora_ingest_ref or top_level_dict[obj_id] == trash_folder_ref): logger.info("top level is islandora ingest or trash")
         else: 
-            logger.info("top level not islandora ingest")
+            logger.info("top level not islandora ingest or trash")
             if flagged == False:
                 # add ref as authoriative
                 logger.info("adding as authoritative")
