@@ -33,10 +33,15 @@ baseURL = config['base URI']['uri']
 if len(sys.argv) < 2: 
     print('usage: python3 accessAPI.py <deduplicated file> ')
     sys.exit(1)
-else: print(f"file to use: {sys.argv[1]}")
+else: 
+    print(f"file to use: {sys.argv[1]}")
+    input_file_name = sys.argv[1].split(".")[0]
+
+# create report log name from command line file
 
 
 fullPID = None
+access_token = None
 
 
 def login():
@@ -99,7 +104,7 @@ islandora_ingest_ref = ['54346d6b-e9ec-4cc1-a102-63fb68ac9177']
 
 def move_to_trash(csvFile, token):
 
-    parentRef = 'a1b1a897-60df-4ebf-88df-6020554a48e8'
+    parentRef = '3781eb01-0e98-4b91-a947-65d59be8516f'
     headers = {
     "Authorization": f"Bearer {token}",
     "Content-Type": "text/plain",
@@ -115,11 +120,9 @@ def move_to_trash(csvFile, token):
                 logging.error(err_msg)
             else: print(f"successfully started {ref} move to {parentRef}")
 
-
-def run_query(sourceID, gameraRef, token):
-
+def api_request(sourceID, access_token):
     headers = {
-    "Authorization": f"Bearer {token}",
+    "Authorization": f"Bearer {access_token}",
     "Content-Type": "text/plain",
     }
 
@@ -148,13 +151,26 @@ def run_query(sourceID, gameraRef, token):
 
     search_url = "https://pitt.preservica.com/api/content/search"
     response = requests.post(search_url, headers=headers, params=data)
-
     # Check if the request was successful
-    if response.status_code == 200: logger.info("success")
-    else: print(f"Error: {response.status_code}, {response.text}")
 
-    #parse json
-    response_json = response.json()
+    if response.status_code == 401: 
+        access_token = login()
+        return api_request(sourceID, access_token)
+    
+    if response.status_code != 200: 
+        print(f"Error: {response.status_code}, {response.text}")
+        return None
+    
+    return response.json()
+
+
+
+def run_query(sourceID, gameraRef, token):
+
+    response_json = api_request(sourceID, token)
+    if not response_json:
+        return 
+   
     total_hits = int(response_json["value"]["totalHits"])
 
     if total_hits == 0:
@@ -183,6 +199,7 @@ def run_query(sourceID, gameraRef, token):
     authoritative_refs = {}
     islandora_ingest_ref = ['54346d6b-e9ec-4cc1-a102-63fb68ac9177']
     trash_folder_ref = ['3781eb01-0e98-4b91-a947-65d59be8516f']
+    special_collection_repo = ['76b3e098-8139-42c2-aa57-1fed047ac198']
 
     for i, obj_id in enumerate(object_ids):
         matched = False
@@ -194,7 +211,7 @@ def run_query(sourceID, gameraRef, token):
                     logger.info(f"exact match for {sourceID} and {onlyPID}")
                     matched_object_ids.append(obj_id)
                 else:
-                    logger.info("not a match")
+                    # logger.info("not a match")
                     break
             if matched and data["name"] == "xip.top_level_so": 
                 top_level_dict[obj_id] = data["value"]
@@ -205,21 +222,28 @@ def run_query(sourceID, gameraRef, token):
         logger.info(f"object id: {obj_id} and the top level so: {top_level_dict[obj_id]}")
         if (top_level_dict[obj_id] == islandora_ingest_ref or top_level_dict[obj_id] == trash_folder_ref): logger.info("top level is islandora ingest or trash")
         else: 
-            logger.info("top level not islandora ingest or trash")
+            # logger.info("top level not islandora ingest or trash")
             if flagged == False:
                 # add ref as authoriative
-                logger.info("adding as authoritative")
+                # logger.info("adding as authoritative")
                 object_refs[obj_id] = bool(True)
                 authoritative_refs[obj_id] = top_level_dict[obj_id]
                 flagged = True
             else:
-                # raise an error because multiple are authoritative
-                logger.error("multiple flagged as authoritative error")
+                if(top_level_dict[obj_id] == special_collection_repo):
+                    # means there are two special collection parents
+                    logger.warning(f"both parent folders of {sourceID} are {special_collection_repo}")
+                else:
+                    # raise an error because multiple are authoritative
+                    logger.error("multiple flagged as authoritative error")
+                
                 return
         
     #out of the for loop for the multiple refs
     if flagged == False:
-        logger.info(f"last item ref: {object_ids[-1]}")
+        # logger.info(f"last item ref: {object_ids[-1]}")
+        # if both values are from ULS archive get first item
+        
         object_refs[object_ids[-1]] = bool(True)
 
     #for each ref
@@ -228,40 +252,47 @@ def run_query(sourceID, gameraRef, token):
         if object_refs[ref] == True:
             # drush command to pull islandora ref
             #if ref differs then update in gamera
-            logger.info(f"checking gamera for {ref}")
+            # logger.info(f"checking gamera for {ref}")
             if ( ref == gameraRef ): 
                 logger.info(f"{ref} same as {gameraRef}")
             else: 
                 #write to new file to be used in bash script
                 file = open("change-parentRef.csv", "a")
-                file.write(fullPID + "," + ref)
-                logger.info(f"use drush to update the preservica ref to {ref}")
+                file.write(f"pitt:{sourceID},{ref}\n")
+                logger.warning(f"use drush to update the pitt:{sourceID} ref to {ref}")
         else:
-            # move ref to trash folder
-            file = open("trash.csv", "a")
-            file.write(ref)
-            logger.info(f"moving {ref} to trash folder")
+            # check if already in trash
+            if top_level_dict[ref] == trash_folder_ref: logger.info(f"{ref} already in trash folder")
+            else:
+                # move ref to trash folder
+                file = open("PART00_trash.csv", "a")
+                file.write(f"{ref}\n")
+                logger.warning(f"moving {ref} to trash folder with sourceID: {sourceID}")
 
 def main():
 
-    logging.basicConfig(filename='report.log', level=logging.INFO)
+    report_log = input_file_name + "_report.log"
+    logging.basicConfig(filename=report_log, level=logging.INFO)
+    logging.basicConfig(filename='warning.log', level=logging.WARNING)
     logging.basicConfig(filename='errors.log', format='%(levelname)s: in function %(funcName)s:%(message)s', level=logging.ERROR)
 
-    # # pull sourceID and gamera ref
-    with open(sys.argv[1], 'r') as csvfile:
-        linereader = csv.reader(csvfile)
-        access_token = login()
-        for line in linereader:
-            if line[0].startswith('pitt'): 
-                fullPID = line[0]
-                logger.info(f"full pid is: {fullPID}")
-                sourceID = (line[0]).rsplit( ':' , maxsplit=1)[-1]
-                gameraRef = line[1]
-                logger.info(f"sourceID: {sourceID} and the corresponding ref: {gameraRef}")
-                run_query(sourceID, gameraRef, access_token)
+    # # # pull sourceID and gamera ref
+    # with open(sys.argv[1], 'r') as csvfile:
+    #     linereader = csv.reader(csvfile)
+    #     access_token = login()
+    #     for line in linereader:
+    #         if line[0].startswith('pitt'): 
+    #             fullPID = line[0]
+    #             # logger.info(f"full pid is: {fullPID}")
+    #             sourceID = (line[0]).rsplit( ':' , maxsplit=1)[-1]
+    #             gameraRef = line[1]
+    #             logger.info(f"sourceID: {sourceID} and the corresponding ref: {gameraRef}")
+    #             run_query(sourceID, gameraRef, access_token)
+    #             logger.info("----------------------------------------------------------------")
     
     # move refs in trashfile
-    move_to_trash("trash.csv" , )
+    token = login()
+    move_to_trash("PART00_trash.csv" , token)
 
 
 if __name__ == "__main__":
