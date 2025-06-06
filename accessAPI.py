@@ -6,8 +6,7 @@ import csv
 import logging
 import configparser
 
-logger = logging.getLogger(__name__)
-
+logging.basicConfig(level=logging.INFO)
 
 # read config file to pull username and password
 config = configparser.ConfigParser()
@@ -21,7 +20,7 @@ if len(sys.argv) < 2:
     print('usage: python3 accessAPI.py <file> ')
     sys.exit(1)
 else: 
-    logging.info(f"file to use: {sys.argv[1]}")
+    logging.debug(f"file to use: {sys.argv[1]}")
     input_file_name = sys.argv[1].split(".")[0]
 
 # create report log name from command line file
@@ -80,7 +79,7 @@ def api_request(sourceID, is_retry=False):
         "fields": [
             {
                 "name": "xip.identifier",
-                "values": [sourceID]
+                "values": ["SourceID "+sourceID.replace(':', '\\:')]
             }
         ]
     }
@@ -118,9 +117,9 @@ def run_query(sourceID, gameraRef):
     total_hits = int(response_json["value"]["totalHits"])
 
     if total_hits == 0:
-        logger.info("no preservica refs attached to this SourceID")
+        logging.info(f"no preservica refs attached to this {sourceID}")
         return
-    else: logger.info(f"total hits: {total_hits}")
+    else: logging.info(f"{total_hits} matches for {sourceID}")
 
     # before making the new lists check to see if it's an exact match to the identifiers
 
@@ -141,54 +140,60 @@ def run_query(sourceID, gameraRef):
         for data in metadata[i]:
             if data["name"] == "xip.identifier":
                 for identifier in data["value"]:
-                    if 'SourceID pitt:'+sourceID == identifier:
+                    if 'SourceID '+sourceID == identifier:
                         matched = True
-                        logger.info(f"exact match for {sourceID} and {identifier}")
+                        logging.info(f"exact match for {sourceID} and {identifier} on {obj_id}")
             if data["name"] == "xip.top_level_so": 
                 parent = data["value"][0]
 
         if matched:
+            logging.info(f"parent is {parent} and {authoritative_ref} authoritative")
             if parent == trash_folder_ref:
-                logger.info(f"{obj_id} is already deleted")
-            elif parent != islandora_ingest_ref and authoritative_ref == None:
-                matched_object_ids.append(obj_id)
-                authoritative_ref = obj_id
+                logging.info(f"{obj_id} is already deleted")
             elif parent != islandora_ingest_ref:
-                manual_resolution = True
-                logger.error(f"{obj_id} and {authoritative_ref} need manual review for {sourceID}")
+                if authoritative_ref == None:
+                    matched_object_ids.append(obj_id)
+                    authoritative_ref = obj_id
+                    logging.info(f"{obj_id} has been processed and is authoritative for {sourceID}")
+                else:
+                    manual_resolution = True
+                    logging.error(f"{obj_id} and {authoritative_ref} need manual review for {sourceID}")
+            else:
+                logging.info(f"{obj_id} is pending")
+                matched_object_ids.append(obj_id)
 
-    if manual_resolution:
+    if manual_resolution or len(matched_object_ids) == 0:
         return
 
     if authoritative_ref == None:
         if gameraRef in matched_object_ids:
+            logging.info(f"using i7 {gameraRef} as authoritative")
             authoritative_ref = gameraRef
         else:
+            logging.info(f"using last seen {obj_id} as authoritative")
             authoritative_ref = obj_id 
 
     for obj_id in matched_object_ids: 
         if obj_id != authoritative_ref:
-            logger.error(f"{obj_id} already exists as {authoritative_ref} for {sourceID}")
-            #move_to_trash(obj_id)
+            logging.warn(f"delete {obj_id} which already exists as {authoritative_ref} for {sourceID}")
+            move_to_trash(obj_id)
+    if gameraRef != authoritative_ref:
+        logging.warn(f"update RELS-EXT {sourceID} from {gameraRef} to {authoritative_ref}")
 
 def main():
     global access_token
-
-    logging.basicConfig(filename=input_file_name+'_report.log', level=logging.INFO)
-    logging.basicConfig(filename=input_file_name+'_warning.log', level=logging.WARNING)
-    logging.basicConfig(filename=input_file_name+'_errors.log', format='%(levelname)s: in function %(funcName)s:%(message)s', level=logging.ERROR)
 
     # # pull sourceID and gamera ref
     with open(sys.argv[1], 'r') as csvfile:
         linereader = csv.reader(csvfile)
         access_token = login()
         for line in linereader:
-            if line[0].startswith('pitt'): 
-                sourceID = (line[0]).rsplit( ':' , maxsplit=1)[-1]
+            if line[0].startswith('pitt:'): 
+                sourceID = line[0]
                 gameraRef = line[3]
-                logger.info(f"sourceID: {sourceID} and the corresponding ref: {gameraRef}")
+                logging.info(f"sourceID: {sourceID} and the corresponding ref: {gameraRef}")
                 run_query(sourceID, gameraRef)
-                logger.info("----------------------------------------------------------------")
+                logging.info("----------------------------------------------------------------")
     
 
 if __name__ == "__main__":
