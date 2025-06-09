@@ -30,6 +30,13 @@ access_token = None
 
 
 def login():
+    """
+    Generate an authentication token for the Preservica API
+
+    Uses global variables of baseURL, username, and password.
+    Returns an access token
+    Terminates with an exit(1) on API error
+    """
     url = baseURL
 
     data = {
@@ -50,6 +57,13 @@ def login():
 
 
 def move_to_trash(ref):
+    """
+    Move a Preservica object to the Trash folder
+
+    Uses a parameter of the RefId and a global access token
+    No returns used
+    Errors logged if encountered
+    """
     global access_token
 
     # Trash folder RefID
@@ -67,6 +81,12 @@ def move_to_trash(ref):
     else: logging.info(f"successfully started {ref} move to {parentRef}")
 
 def api_request(sourceID, is_retry=False):
+    """
+    Search the Preservica API for a sourceID, per the xip.identifier metadata
+
+    Uses a sourceID parameter for the search data, a global access token, and a boolean parameter to recurse once on an expired session
+    Returns the JSON of the search result, or None
+    """
     global access_token
 
     headers = {
@@ -109,6 +129,19 @@ def api_request(sourceID, is_retry=False):
 
 
 def run_query(sourceID, gameraRef):
+    """
+    Process search results for a sourceID to ignore, mark authorititive, or delete
+
+    Uses an Islandora sourceId, and existing authoritative Preservica RefId
+    No returned data
+    Delete and Update actions are captured by warning level logging, multiple authoritative objects are captured by error level logging.
+
+    We'll check if a match is exact, then check if the matched object has been procesed by Preservation
+    Items processed by Preservation (moved out of IslandoraIngests) should be considered authoritative
+    If a Preservica object is already deleted, or is already authoritative, no action is needed
+    If a Preservica object duplicates an already authoritative object, it should be deleted
+    If a Preservica object existing authoritative reference differs from the processed object, it should be updated
+    """
 
     response_json = api_request(sourceID)
     if not response_json:
@@ -181,6 +214,9 @@ def run_query(sourceID, gameraRef):
         logging.warn(f"update RELS-EXT {sourceID} from {gameraRef} to {authoritative_ref}")
 
 def main():
+    """
+    Login to the Preservica API, then process a CSV line by line to check Islandora ID (field 0) and Preservica RefIds (field 3)
+    """
     global access_token
 
     # # pull sourceID and gamera ref
