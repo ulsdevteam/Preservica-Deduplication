@@ -116,7 +116,7 @@ def api_request(sourceID, is_retry=False):
     response = requests.post(search_url, headers=headers, params=data)
     # Check if the request was successful
 
-    if response.status_code == 401 and is_retry == false: 
+    if response.status_code == 401 and is_retry == False: 
         access_token = login()
         return api_request(sourceID, True)
     
